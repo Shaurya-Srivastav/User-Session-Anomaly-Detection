@@ -1,35 +1,115 @@
-# Pass-the-Hash Attack Detector
+# Pass-the-Hash (PtH) Attack Detection System
 
-This is a Python script that detects potential pass-the-hash (PtH) attacks by analyzing Server Message Block (SMB) traffic. The script uses the `pydivert` library to capture network packets, `wmi` to retrieve network interface information, `netifaces` to obtain the default network interface, and `Cryptodome` for cryptographic operations.
+This comprehensive documentation outlines the architecture and implementation details of a sophisticated Pass-the-Hash (PtH) attack detection system developed in Python. PtH attacks represent a critical security concern, and this system employs a range of technologies, including packet capture, network analysis, and cryptography, to proactively identify potential PtH attacks in real-time.
 
-## Prerequisites
+## Overview
 
-To run this code on your computer, you need to have the following:
+Pass-the-Hash attacks are a prevalent technique employed by malicious actors to gain unauthorized access to systems by exploiting hashed credentials of legitimate users. Detecting such attacks is paramount for preserving network security. This documentation presents a PtH attack detection system built using Python and leveraging the following essential libraries and technologies:
 
-- Python 3.x installed
-- `pydivert` library installed (`pip install pydivert`)
-- `wmi` library installed (`pip install wmi`)
-- `netifaces` library installed (`pip install netifaces`)
-- `Cryptodome` library installed (`pip install pycryptodomex`)
+- [pydivert](https://github.com/ffalcinelli/pydivert): A Python library for Windows, enabling packet capture and manipulation.
+- [wmi](https://pypi.org/project/WMI/): The Windows Management Instrumentation (WMI) library, facilitating system information retrieval.
+- [netifaces](https://pypi.org/project/netifaces/): A Python library for accessing network interface information.
+- [Cryptodome](https://pypi.org/project/pycryptodome/): A Python library offering cryptographic capabilities.
 
-## How it works
+## Key Components
 
-1. The script defines a function `detect_pth_attack(packet)` to detect pass-the-hash attacks by analyzing SMB traffic. It checks if the packet is an SMB authentication request.
-2. The function `find_interface_guid()` retrieves the default network interface's MAC address using the `netifaces` library.
-3. The `packet_handler(packet)` function is responsible for handling captured packets. It calls the `detect_pth_attack()` function and prints a message if a potential pass-the-hash attack is detected.
-4. The `main()` function is the entry point of the script. It retrieves the interface GUID using `find_interface_guid()` and sets up a packet capture filter for TCP traffic on port 445 (SMB).
-5. The script starts capturing packets using `pydivert.WinDivert` and iterates over the captured packets, calling `packet_handler()` for each packet.
-6. Finally, the script prints a message when the capture is stopped or if no active network interface is found.
+### 1. PtH Attack Detection Logic
 
-## Running the code
+At the core of the system is the `detect_pth_attack` function, which analyzes Server Message Block (SMB) traffic to identify potential PtH attacks. It scrutinizes SMB packets on port 445, specifically looking for authentication requests indicative of PtH attacks.
 
-1. Make sure you have met the prerequisites mentioned above.
-2. Save the code to a file named `pth_attack_detector.py`.
-3. Open a terminal or command prompt and navigate to the directory where the file is located.
-4. Run the script by executing the command `python pth_attack_detector.py`.
-5. The script will start capturing packets and display a message when a potential pass-the-hash attack is detected.
-6. To stop the script, press `Ctrl+C`.
+```python
+def detect_pth_attack(packet):
+    # Detects a pass-the-hash attack by analyzing SMB traffic
+    smb_packet = packet.tcp
+    if smb_packet.dst_port == 445 and smb_packet.payload:
+        # Check if the SMB packet is an authentication request
+        if smb_packet.payload[8] == 0x73 and smb_packet.payload[9] == 0x0d:
+            return True
+    return False
+```
 
-**Note:** This script requires administrative privileges to capture network packets. Make sure to run it with appropriate permissions.
+### 2. Network Interface Detection
 
-Feel free to modify the script or integrate it into your existing projects to enhance the security of your network environment.
+To determine the network interface to monitor, the system utilizes the `find_interface_guid` function. This function identifies the default network interface and retrieves its MAC address.
+
+```python
+def find_interface_guid():
+    gateways = netifaces.gateways()
+    default_interface = gateways['default'][netifaces.AF_INET][1]
+    interfaces = netifaces.interfaces()
+
+    for interface in interfaces:
+        if interface == default_interface:
+            addrs = netifaces.ifaddresses(interface)
+            if netifaces.AF_LINK in addrs:
+                mac_address = addrs[netifaces.AF_LINK][0]['addr']
+                return mac_address
+
+    return None
+```
+
+### 3. Packet Capture and Analysis
+
+The `packet_handler` function is responsible for processing captured packets. It calls the `detect_pth_attack` function to check if an SMB packet indicates a PtH attack.
+
+```python
+def packet_handler(packet):
+    if detect_pth_attack(packet):
+        print("Potential pass-the-hash attack detected!")
+```
+
+### 4. Main Function
+
+The `main` function orchestrates the entire PtH attack detection system. It identifies the network interface to monitor, sets up packet filtering criteria, and initiates packet capture using pydivert.
+
+```python
+def main():
+    interface_guid = find_interface_guid()
+
+    if interface_guid:
+        filter_expression = 'tcp.DstPort == 445'  # Capture only TCP traffic on port 445 (SMB)
+
+        # Open the network interface in packet capture mode
+        with pydivert.WinDivert(filter=filter_expression, layer=0, flags=pydivert.Flag.SNIFF) as w:
+            print(f"Started capturing on interface with GUID: {interface_guid}...")
+            # Start capturing packets
+            for packet in w:
+                packet_handler(packet)
+
+        print("Capture stopped.")
+    else:
+        print("No active network interface found.")
+
+if __name__ == '__main__':
+    main()
+```
+
+## Usage
+
+1. Ensure you have the necessary libraries installed. You can install them using pip:
+
+   ```bash
+   pip install pydivert wmi netifaces pycryptodome
+   ```
+
+2. Run the `pass_the_hash_detector.py` script. It will capture and analyze network packets, printing a message when a potential PtH attack is detected.
+
+## Customization
+
+This system can be further customized by adjusting packet filtering criteria, implementing additional analysis logic, or integrating it with your network security infrastructure.
+
+## Dependencies
+
+- Python 3.x
+- pydivert
+- wmi
+- netifaces
+- Cryptodome
+
+## License
+
+This project is open-source and available under the MIT License. Refer to the [LICENSE](LICENSE) file for complete licensing details.
+
+The PtH attack detection system presented in this documentation is a valuable tool for enhancing network security by proactively identifying potential security threats in real-time.
+
+Please feel free to reach out for any inquiries or support related to this project.
