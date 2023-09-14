@@ -106,10 +106,3 @@ This system can be further customized by adjusting packet filtering criteria, im
 - netifaces
 - Cryptodome
 
-## License
-
-This project is open-source and available under the MIT License. Refer to the [LICENSE](LICENSE) file for complete licensing details.
-
-The PtH attack detection system presented in this documentation is a valuable tool for enhancing network security by proactively identifying potential security threats in real-time.
-
-Please feel free to reach out for any inquiries or support related to this project.
